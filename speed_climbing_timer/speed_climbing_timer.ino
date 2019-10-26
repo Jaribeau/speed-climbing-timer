@@ -33,6 +33,7 @@ int TOP_SENSOR_PIN = 1;
 int FOOT_LASER_PIN = 9;
 int FOOT_SENSOR_PIN = 7;
 int START_BTN_PIN = 10;
+int SPEAKER_PIN = 11;
 
 //Constants
 const int READY     = 1;
@@ -68,10 +69,10 @@ void changeMode(int mode_){
       lcd.blink();
       break;
 
-    case COUNTDOWN:
+    case COUNTDOWN:       
       lcd.clear();
-      countdownTimer = millis();
-      //  -> Double beep to signal countdown coming
+      countdownTimer = millis();   
+      countdownStep = 0;
       break;
 
     case CLIMBING:
@@ -119,7 +120,6 @@ void setup() {
 
   // Attach interrupt service routines (ISRs)
   attachInterrupt(digitalPinToInterrupt(TOP_SENSOR_PIN), topSwitchPressedISR, CHANGE);
-  
   delay(3000);
   changeMode(READY);
 }
@@ -143,6 +143,7 @@ void loop() {
     case COUNTDOWN:
       if (millis() - countdownTimer < 5000){
         if(countdownStep != 1){
+          tone(SPEAKER_PIN, 400, 100);
           lcd.clear();
           lcd.print("Get ready...");
         }
@@ -150,6 +151,7 @@ void loop() {
       }
       else if (millis() - countdownTimer < 5000 + beepInterval){
         if(countdownStep != 2){
+          tone(SPEAKER_PIN, 200, 500);
           lcd.clear();
           lcd.print("Beep 1");
         }
@@ -157,12 +159,14 @@ void loop() {
       }
       else if (millis() - countdownTimer < 5000 + beepInterval*2){
         if(countdownStep != 3){
+          tone(SPEAKER_PIN, 200, 500);
           lcd.clear();
           lcd.print("Beep 2");
         }
         countdownStep = 3;
       }
       else if (millis() - countdownTimer >= 5000 + beepInterval*2){
+        tone(SPEAKER_PIN, 300, 500);
         lcd.clear();
         lcd.print("BEEEEP 3. GO!");
         changeMode(CLIMBING);
@@ -170,11 +174,26 @@ void loop() {
 
       //  -> If feet release: LED RED and BUZZ
       if(digitalRead(FOOT_SENSOR_PIN) && (millis() - footswitchDebounceTimer) > DEBOUNCE_TIME){
-        lcd.clear();
-        lcd.print("FOOT FAULT");
-        countdownStep = 0;
-        delay(3000);
-        changeMode(READY);
+        if (millis() - countdownTimer > 5000 ){
+          lcd.clear();
+          lcd.print("FOOT FAULT");
+
+          // Buzzer
+          // noTone(SPEAKER_PIN);
+          tone(SPEAKER_PIN, 100, 100);
+          delay(200);
+          tone(SPEAKER_PIN, 100, 100);
+          delay(200);
+          tone(SPEAKER_PIN, 100, 100);
+
+          delay(2000);
+          changeMode(READY);
+        }
+        else{
+          // noTone(SPEAKER_PIN);
+          tone(SPEAKER_PIN, 200, 50);
+          changeMode(READY);
+        }
       }
       break;
 
@@ -191,7 +210,18 @@ void loop() {
         lcd.print(lastTime);
         lcd.setCursor(0,1);
         lcd.print("FINISHED!");
-        delay(5000);
+
+        noTone(SPEAKER_PIN);
+        // tone(SPEAKER_PIN, 400, 50);
+        // delay(100);
+        // tone(SPEAKER_PIN, 500, 50);
+        // delay(100);
+        tone(SPEAKER_PIN, 600, 50);
+        delay(100);
+        tone(SPEAKER_PIN, 800, 50);
+        delay(100);
+
+        delay(3000);
         changeMode(READY);
       }
       break;
