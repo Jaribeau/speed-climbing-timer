@@ -63,6 +63,8 @@ const int IDLE      = 0;
 const int READY     = 1;
 const int COUNTDOWN = 2;
 const int CLIMBING  = 3;
+long beepInterval = 1000;
+long DEBOUNCE_TIME = 500; // milliseconds
 
 // State Variables
 int currentMode = 0;
@@ -71,17 +73,23 @@ volatile bool footSwitchState = false;
 volatile bool topSwitchState = false;
 volatile bool stateChangedFlag = true;
 long timer = 0;
-
+double lastTime = 0.0;
+long countdownTimer = 0;
+long footswitchDebounceTimer = 0;
+long printTimer = 0;
+int printFreq = 100;
+int countdownStep = 0;
 
 void changeMode(int mode_){
+  currentMode = mode_;
   switch (currentMode)
   {
     // IDLE case maybe not necessary?
     case IDLE:
       // Show last score
       lcd.clear();
-      lcd.print("Time: ");
-      lcd.print(timer);
+      lcd.print("Last: ");
+      lcd.print(lastTime);
       lcd.setCursor(0,1);
       lcd.print("Press START.");
       lcd.noBlink();
@@ -90,17 +98,19 @@ void changeMode(int mode_){
     case READY:
       // "Beep"
       lcd.clear();
-      lcd.print("00000");
+      lcd.print("Last: ");
+      lcd.print(lastTime);
       lcd.setCursor(0,1);
-      lcd.print("Step on PAD to start countdown...");
+      lcd.print("Step on PAD to start");
       lcd.blink();
       break;
 
     case COUNTDOWN:
+      lcd.clear();
+      countdownTimer = millis();
       //  -> Footswitch ON
       //  -> Double beep to signal countdown coming
       //  -> 5 second delay
-      //  -> Beep beep BEEP
       //  -> If feet release: LED RED and BUZZ
       break;
 
@@ -110,7 +120,7 @@ void changeMode(int mode_){
       lcd.print(timer);
       lcd.setCursor(0,1);
       lcd.print("CLIMBING");
-      //  -> Start timer (display on screen)
+      lcd.noBlink();
       //  -> Stop time when lazer hit (leave on screen)
       //  -> Back to IDLE
       break;
@@ -162,13 +172,14 @@ void setup() {
 }
 
 void loop() {  
+  // lcd.print(!digitalRead(FOOT_SENSOR_PIN));
   switch (currentMode)
   {
     // IDLE case maybe not necessary?
     case IDLE:
       // Watch for start button press
       if(!digitalRead(START_BTN_PIN)){
-        changeMode(COUNTDOWN);
+        changeMode(READY);
       }
       break;
 
@@ -177,21 +188,64 @@ void loop() {
       // watch for footswitch press
       if(!digitalRead(FOOT_SENSOR_PIN)){
         changeMode(COUNTDOWN);
+        footswitchDebounceTimer = millis();
       }
       break;
 
     case COUNTDOWN:
-      //  -> Footswitch ON
-
-      //  -> Double beep to signal countdown coming
-      //  -> 5 second delay
-      //  -> Beep beep BEEP
+      if (millis() - countdownTimer < 5000){
+        if(countdownStep != 1){
+          lcd.clear();
+          lcd.print("Get ready...");
+        }
+        countdownStep = 1;
+      }
+      else if (millis() - countdownTimer < 5000 + beepInterval){
+        if(countdownStep != 2){
+          lcd.clear();
+          lcd.print("Beep 1");
+        }
+        countdownStep = 2;
+      }
+      else if (millis() - countdownTimer < 5000 + beepInterval*2){
+        if(countdownStep != 3){
+          lcd.clear();
+          lcd.print("Beep 2");
+        }
+        countdownStep = 3;
+      }
+      else if (millis() - countdownTimer >= 5000 + beepInterval*2){
+        lcd.clear();
+        lcd.print("BEEEEP 3. GO!");
+        changeMode(CLIMBING);
+      }
 
       //  -> If feet release: LED RED and BUZZ
+      if(digitalRead(FOOT_SENSOR_PIN) && (millis() - footswitchDebounceTimer) > DEBOUNCE_TIME){
+        lcd.clear();
+        lcd.print("FOOT FAULT");
+        countdownStep = 0;
+        delay(3000);
+        changeMode(READY);
+      }
       break;
 
     case CLIMBING:
-      /* code */
+      if(millis() - printTimer > printFreq){
+        printTimer = millis();
+        lcd.setCursor(0,0);
+        lcd.print((double)(millis() - timer) / 1000.0);
+      }
+      
+      if(!digitalRead(TOP_SENSOR_PIN)){
+        lastTime = (double)(millis() - timer) / 1000.0;
+        lcd.setCursor(0,0);
+        lcd.print(lastTime);
+        lcd.setCursor(0,1);
+        lcd.print("FINISHED!");
+        delay(5000);
+        changeMode(IDLE);
+      }
       break;
   }
 }
