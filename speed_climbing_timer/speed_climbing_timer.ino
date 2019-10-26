@@ -12,35 +12,10 @@
 //  1x light-sensor
 //  1x LEDs
 
-////////////////////////////////////////////////
-// Modes
-////////////////////////////////////////////////
-// IDLE
-//  -> Show last score
-//  -> Press start
-
-// READY
-//  -> Timer set to zero
-//  -> Footswitch LED slow blinking (fading in/out?)
-//  -> "Step on PAD to start countdown"
-
-// COUNTDOWN
-//  -> Footswitch ON
-//  -> Double beep to signal countdown coming
-//  -> 5 second delay
-//  -> Beep beep BEEP
-//  -> If feet release: LED RED and BUZZ
-
-// CLIMBING
-//  -> Start timer (display on screen)
-//  -> Stop time when lazer hit (leave on screen)
-//  -> Back to IDLE
-
-/*
-TODO:
-- Plan out mode switching
-- Plan out LED control in the main loop
- */
+// TODO
+// - Add sound
+// - Add LEDs
+// - (?) Add highscores
 
 #include <Wire.h>
 #include <hd44780.h>                       // main hd44780 header
@@ -59,7 +34,6 @@ int FOOT_SENSOR_PIN = 7;
 int START_BTN_PIN = 10;
 
 //Constants
-const int IDLE      = 0;
 const int READY     = 1;
 const int COUNTDOWN = 2;
 const int CLIMBING  = 3;
@@ -84,24 +58,13 @@ void changeMode(int mode_){
   currentMode = mode_;
   switch (currentMode)
   {
-    // IDLE case maybe not necessary?
-    case IDLE:
-      // Show last score
-      lcd.clear();
-      lcd.print("Last: ");
-      lcd.print(lastTime);
-      lcd.setCursor(0,1);
-      lcd.print("Press START.");
-      lcd.noBlink();
-      break;
-
     case READY:
       // "Beep"
       lcd.clear();
       lcd.print("Last: ");
       lcd.print(lastTime);
       lcd.setCursor(0,1);
-      lcd.print("Step on PAD to start");
+      lcd.print("Step on PAD...");
       lcd.blink();
       break;
 
@@ -121,8 +84,6 @@ void changeMode(int mode_){
       lcd.setCursor(0,1);
       lcd.print("CLIMBING");
       lcd.noBlink();
-      //  -> Stop time when lazer hit (leave on screen)
-      //  -> Back to IDLE
       break;
   }
 }
@@ -168,21 +129,13 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(TOP_SENSOR_PIN), topSwitchReleasedISR, RISING);
   
   delay(3000);
-  changeMode(IDLE);
+  changeMode(READY);
 }
 
 void loop() {  
   // lcd.print(!digitalRead(FOOT_SENSOR_PIN));
   switch (currentMode)
   {
-    // IDLE case maybe not necessary?
-    case IDLE:
-      // Watch for start button press
-      if(!digitalRead(START_BTN_PIN)){
-        changeMode(READY);
-      }
-      break;
-
     case READY:
       // Pulse led on footswitch
       // watch for footswitch press
@@ -244,7 +197,7 @@ void loop() {
         lcd.setCursor(0,1);
         lcd.print("FINISHED!");
         delay(5000);
-        changeMode(IDLE);
+        changeMode(READY);
       }
       break;
   }
