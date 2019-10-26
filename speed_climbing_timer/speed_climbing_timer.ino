@@ -45,15 +45,20 @@ TODO:
 - Plan out LED control in the main loop
  */
 
-#include <Wire.h> 
-#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+#include <hd44780.h>                       // main hd44780 header
+#include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
 
+// LCD
+hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
+const int LCD_COLS = 16;
+const int LCD_ROWS = 2;
 
 // Pin assignments
-int TOP_LASER_PIN = 10;
-int TOP_SENSOR_PIN = 9;
+int TOP_LASER_PIN = 8;
+int TOP_SENSOR_PIN = 1;
 int FOOT_LASER_PIN = 9;
-int FOOT_SENSOR_PIN = 9;
+int FOOT_SENSOR_PIN = 7;
 
 //Constants
 const int IDLE      = 0;
@@ -66,9 +71,6 @@ int current_mode = 0;
 int counter = 0;
 volatile bool footSwitchState = false;
 volatile bool topSwitchState = false;
-
-LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
-
 
 
 void changeMode(int mode){
@@ -83,15 +85,25 @@ void topSwitchReleasedISR() { topSwitchState = false;   }
 
 
 void setup() {
-  pinMode(LASER_SENSOR_PIN, INPUT);
-  pinMode(LASER_PIN, OUTPUT);
+  pinMode(TOP_SENSOR_PIN, INPUT);
+  pinMode(TOP_LASER_PIN, OUTPUT);
+  pinMode(FOOT_SENSOR_PIN, INPUT);
+  pinMode(FOOT_LASER_PIN, OUTPUT);
 
   // Setup LCD
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0,0);
-  lcd.print("Hello!");
-  lcd.setCursor(0,1);
+  int status;
+	status = lcd.begin(LCD_COLS, LCD_ROWS);
+	if(status) // non zero status means it was unsuccesful
+	{
+		status = -status; // convert negative status value to positive number
+
+		// begin() failed so blink error code using the onboard LED if possible
+		hd44780::fatalError(status); // does not return
+	}
+	// initalization was successful, the backlight should be on now
+
+	// Print a message to the LCD
+	lcd.print("Hello, World!");
   lcd.print("Climber Timer v0.1");
 
   //Serial setup
