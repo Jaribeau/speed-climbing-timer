@@ -13,6 +13,7 @@
 //  1x LEDs
 
 // TODO
+// - Fix timer precision
 // - Add sound
 // - Add LEDs
 // - (?) Add highscores
@@ -43,9 +44,8 @@ long DEBOUNCE_TIME = 500; // milliseconds
 // State Variables
 int currentMode = 0;
 int counter = 0;
-volatile bool footSwitchState = false;
-volatile bool topSwitchState = false;
-volatile bool stateChangedFlag = true;
+volatile bool topSwitchStateChanged = false;
+volatile long topSwitchPressedTime = 0;
 long timer = 0;
 double lastTime = 0.0;
 long countdownTimer = 0;
@@ -71,14 +71,12 @@ void changeMode(int mode_){
     case COUNTDOWN:
       lcd.clear();
       countdownTimer = millis();
-      //  -> Footswitch ON
       //  -> Double beep to signal countdown coming
-      //  -> 5 second delay
-      //  -> If feet release: LED RED and BUZZ
       break;
 
     case CLIMBING:
       timer = millis();
+      topSwitchPressedTime = 0;
       lcd.clear();
       lcd.print(timer);
       lcd.setCursor(0,1);
@@ -89,10 +87,7 @@ void changeMode(int mode_){
 }
 
 // Register new switch states
-void footSwitchPressedISR() { footSwitchState = true, stateChangedFlag = true; }
-void footSwitchReleasedISR(){ footSwitchState = false, stateChangedFlag = true; }
-void topSwitchPressedISR()  { topSwitchState = true, stateChangedFlag = true; }
-void topSwitchReleasedISR() { topSwitchState = false, stateChangedFlag = true; }
+void topSwitchPressedISR()  { topSwitchStateChanged = true; topSwitchPressedTime = millis(); }
 
 
 void setup() {
@@ -114,7 +109,7 @@ void setup() {
   // Serial.print("Climber Timer v0.1");
 
   //Setup input pins
-  pinMode(TOP_SENSOR_PIN, INPUT_PULLUP);
+  pinMode(TOP_SENSOR_PIN, INPUT);
   pinMode(FOOT_SENSOR_PIN, INPUT_PULLUP);
   pinMode(START_BTN_PIN, INPUT_PULLUP);
 
@@ -123,17 +118,17 @@ void setup() {
   digitalWrite(TOP_LASER_PIN, HIGH);
 
   // Attach interrupt service routines (ISRs)
-  attachInterrupt(digitalPinToInterrupt(FOOT_SENSOR_PIN), footSwitchPressedISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(FOOT_SENSOR_PIN), footSwitchReleasedISR, RISING);
-  attachInterrupt(digitalPinToInterrupt(TOP_SENSOR_PIN), topSwitchPressedISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(TOP_SENSOR_PIN), topSwitchReleasedISR, RISING);
+  attachInterrupt(digitalPinToInterrupt(TOP_SENSOR_PIN), topSwitchPressedISR, CHANGE);
   
   delay(3000);
   changeMode(READY);
 }
 
-void loop() {  
-  // lcd.print(!digitalRead(FOOT_SENSOR_PIN));
+void loop() {
+  // lcd.setCursor(0,0);
+  // if(digitalRead(TOP_SENSOR_PIN))
+  //   lcd.print(topSwitchPressedTime);
+  // currentMode = 0;
   switch (currentMode)
   {
     case READY:
@@ -190,8 +185,8 @@ void loop() {
         lcd.print((double)(millis() - timer) / 1000.0);
       }
       
-      if(!digitalRead(TOP_SENSOR_PIN)){
-        lastTime = (double)(millis() - timer) / 1000.0;
+      if(topSwitchPressedTime != 0){
+        lastTime = (double)(topSwitchPressedTime - timer) / 1000.0;
         lcd.setCursor(0,0);
         lcd.print(lastTime);
         lcd.setCursor(0,1);
