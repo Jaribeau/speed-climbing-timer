@@ -28,12 +28,12 @@ const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 
 // Pin assignments
-int TOP_LASER_PIN = 8;
-int TOP_SENSOR_PIN = 1;
-int FOOT_LASER_PIN = 9;
-int FOOT_SENSOR_PIN = 7;
-int START_BTN_PIN = 10;
-int SPEAKER_PIN = 11;
+// int TOP_LASER_PIN = 8;
+int TOP_SENSOR_PIN = 14;
+// int FOOT_LASER_PIN = 10;
+int FOOT_SENSOR_PIN = 10;
+// int START_BTN_PIN = 10;
+int SPEAKER_PIN = 2;
 
 //Constants
 const int READY     = 1;
@@ -110,31 +110,33 @@ void setup() {
   // Serial.print("Climber Timer v0.1");
 
   //Setup input pins
-  pinMode(TOP_SENSOR_PIN, INPUT);
+  pinMode(TOP_SENSOR_PIN, INPUT_PULLUP);
   pinMode(FOOT_SENSOR_PIN, INPUT_PULLUP);
-  pinMode(START_BTN_PIN, INPUT_PULLUP);
+  // pinMode(START_BTN_PIN, INPUT_PULLUP);
 
   // Start lasers
-  digitalWrite(FOOT_LASER_PIN, HIGH);
-  digitalWrite(TOP_LASER_PIN, HIGH);
+  // digitalWrite(FOOT_LASER_PIN, HIGH);
+  // digitalWrite(TOP_LASER_PIN, HIGH);
 
   // Attach interrupt service routines (ISRs)
-  attachInterrupt(digitalPinToInterrupt(TOP_SENSOR_PIN), topSwitchPressedISR, CHANGE);
+  // attachInterrupt(analogPinToInterrupt(TOP_SENSOR_PIN), topSwitchPressedISR, FALLING);
   delay(3000);
   changeMode(READY);
 }
 
 void loop() {
-  // lcd.setCursor(0,0);
+  
   // if(digitalRead(TOP_SENSOR_PIN))
-  //   lcd.print(topSwitchPressedTime);
+    // lcd.print(topSwitchPressedTime);
   // currentMode = 0;
+  // lcd.print(digitalRead(TOP_SENSOR_PIN));
+
   switch (currentMode)
   {
     case READY:
       // Pulse led on footswitch
       // watch for footswitch press
-      if(!digitalRead(FOOT_SENSOR_PIN)){
+      if(digitalRead(FOOT_SENSOR_PIN)){
         changeMode(COUNTDOWN);
         footswitchDebounceTimer = millis();
       }
@@ -173,7 +175,7 @@ void loop() {
       }
 
       //  -> If feet release: LED RED and BUZZ
-      if(digitalRead(FOOT_SENSOR_PIN) && (millis() - footswitchDebounceTimer) > DEBOUNCE_TIME){
+      if(!digitalRead(FOOT_SENSOR_PIN) && (millis() - footswitchDebounceTimer) > DEBOUNCE_TIME){
         if (millis() - countdownTimer > 5000 ){
           lcd.clear();
           lcd.print("FOOT FAULT");
@@ -204,6 +206,9 @@ void loop() {
         lcd.print((double)(millis() - timer) / 1000.0);
       }
       
+      if(topSwitchPressedTime == 0 && digitalRead(TOP_SENSOR_PIN))
+        topSwitchPressedTime = millis();
+
       if(topSwitchPressedTime != 0){
         lastTime = (double)(topSwitchPressedTime - timer) / 1000.0;
         lcd.setCursor(0,0);
