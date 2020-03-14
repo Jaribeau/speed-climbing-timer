@@ -120,7 +120,7 @@ void setup() {
 
   // Attach interrupt service routines (ISRs)
   // attachInterrupt(analogPinToInterrupt(TOP_SENSOR_PIN), topSwitchPressedISR, FALLING);
-  delay(3000);
+  delay(2000);
   changeMode(READY);
 }
 
@@ -205,6 +205,11 @@ void loop() {
         lcd.setCursor(0,0);
         lcd.print((double)(millis() - timer) / 1000.0);
       }
+
+      if(!digitalRead(FOOT_SENSOR_PIN) && timer >= 2000 ){
+        changeMode(READY);
+        tone(SPEAKER_PIN, 200, 50);
+      }
       
       if(topSwitchPressedTime == 0 && digitalRead(TOP_SENSOR_PIN))
         topSwitchPressedTime = millis();
@@ -222,6 +227,10 @@ void loop() {
         // tone(SPEAKER_PIN, 500, 50);
         // delay(100);
         tone(SPEAKER_PIN, 600, 50);
+        delay(100);
+        tone(SPEAKER_PIN, 800, 50);
+        delay(100);
+        tone(SPEAKER_PIN, 800, 50);
         delay(100);
         tone(SPEAKER_PIN, 800, 50);
         delay(100);
