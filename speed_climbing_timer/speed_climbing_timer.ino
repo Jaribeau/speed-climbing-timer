@@ -206,7 +206,7 @@ void loop() {
         lcd.print((double)(millis() - timer) / 1000.0);
       }
 
-      if(!digitalRead(FOOT_SENSOR_PIN) && timer >= 2000 ){
+      if(digitalRead(FOOT_SENSOR_PIN) && (millis() - timer) >= 5000 ){
         changeMode(READY);
         tone(SPEAKER_PIN, 200, 50);
       }
