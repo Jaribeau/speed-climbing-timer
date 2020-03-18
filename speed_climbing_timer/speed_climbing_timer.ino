@@ -1,22 +1,14 @@
 ////////////////////////////////////////////////
-// Layout
+// Speed Climbing Timer
+// Author: Jared Baribeau
 ////////////////////////////////////////////////
-// Top: 
-//  12v, 5v, GND
-//  1x Laser
-//  1x light-sensor
-//  LEDs (TBD if digital IO or laser triggered)
-//  Large LCD?
-// Foot:
-//  1x Laser
-//  1x light-sensor
-//  1x LEDs
 
-// TODO
-// - Fix timer precision
-// - Add sound
-// - Add LEDs
-// - (?) Add highscores
+// Potential improvements
+// - Experiment with using an external speaker instead of a tiny amp + speaker to get more volume
+// - Add LEDs to top switch to indicate when it's been pressed
+// - Calculate timer precision (and change over to using interrupts if extreme precision is desired)
+// - Add large LCD screen
+// - Add ability to connect a second timer, for side-by-side use
 
 #include <Wire.h>
 #include <hd44780.h>                       // main hd44780 header
@@ -28,11 +20,8 @@ const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 
 // Pin assignments
-// int TOP_LASER_PIN = 8;
 int TOP_SENSOR_PIN = 14;
-// int FOOT_LASER_PIN = 10;
 int FOOT_SENSOR_PIN = 10;
-// int START_BTN_PIN = 10;
 int SPEAKER_PIN = 2;
 
 //Constants
@@ -87,10 +76,6 @@ void changeMode(int mode_){
   }
 }
 
-// Register new switch states
-void topSwitchPressedISR()  { topSwitchStateChanged = true; topSwitchPressedTime = millis(); }
-
-
 void setup() {
   // Setup LCD
   int status;
@@ -106,31 +91,16 @@ void setup() {
 	// Print a message to the LCD
   lcd.lineWrap();
   lcd.print("Climber Timer");
-  // Serial.begin(115200);
-  // Serial.print("Climber Timer v0.1");
 
   //Setup input pins
   pinMode(TOP_SENSOR_PIN, INPUT_PULLUP);
   pinMode(FOOT_SENSOR_PIN, INPUT_PULLUP);
-  // pinMode(START_BTN_PIN, INPUT_PULLUP);
 
-  // Start lasers
-  // digitalWrite(FOOT_LASER_PIN, HIGH);
-  // digitalWrite(TOP_LASER_PIN, HIGH);
-
-  // Attach interrupt service routines (ISRs)
-  // attachInterrupt(analogPinToInterrupt(TOP_SENSOR_PIN), topSwitchPressedISR, FALLING);
   delay(2000);
   changeMode(READY);
 }
 
 void loop() {
-  
-  // if(digitalRead(TOP_SENSOR_PIN))
-    // lcd.print(topSwitchPressedTime);
-  // currentMode = 0;
-  // lcd.print(digitalRead(TOP_SENSOR_PIN));
-
   switch (currentMode)
   {
     case READY:
@@ -181,7 +151,6 @@ void loop() {
           lcd.print("FOOT FAULT");
 
           // Buzzer
-          // noTone(SPEAKER_PIN);
           tone(SPEAKER_PIN, 100, 100);
           delay(200);
           tone(SPEAKER_PIN, 100, 100);
@@ -192,7 +161,6 @@ void loop() {
           changeMode(READY);
         }
         else{
-          // noTone(SPEAKER_PIN);
           tone(SPEAKER_PIN, 200, 50);
           changeMode(READY);
         }
@@ -200,20 +168,24 @@ void loop() {
       break;
 
     case CLIMBING:
+      // Show timer counting up
       if(millis() - printTimer > printFreq){
         printTimer = millis();
         lcd.setCursor(0,0);
         lcd.print((double)(millis() - timer) / 1000.0);
       }
 
+      // Press footswitch to reset after a few seconds (in case climber doesn't finish)
       if(digitalRead(FOOT_SENSOR_PIN) && (millis() - timer) >= 5000 ){
         changeMode(READY);
         tone(SPEAKER_PIN, 200, 50);
       }
       
+      // Record time that top switch is pressed
       if(topSwitchPressedTime == 0 && digitalRead(TOP_SENSOR_PIN))
         topSwitchPressedTime = millis();
 
+      // Celebrate successful climb, etc
       if(topSwitchPressedTime != 0){
         lastTime = (double)(topSwitchPressedTime - timer) / 1000.0;
         lcd.setCursor(0,0);
@@ -222,10 +194,6 @@ void loop() {
         lcd.print("FINISHED!");
 
         noTone(SPEAKER_PIN);
-        // tone(SPEAKER_PIN, 400, 50);
-        // delay(100);
-        // tone(SPEAKER_PIN, 500, 50);
-        // delay(100);
         tone(SPEAKER_PIN, 600, 50);
         delay(100);
         tone(SPEAKER_PIN, 800, 50);
